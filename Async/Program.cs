@@ -12,18 +12,18 @@ namespace AsyncBreakfast
 
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
-            Coffee cup = PourCoffee();
+            Task<Coffee> cup = PourCoffeeAsync();
             Console.WriteLine("coffee is ready " + DateTimeOffset.Now.ToString("mm:ss"));
 
-            Egg eggs = FryEggs(2);
+            Task<Egg> eggs = FryEggsAsync(2);
             Console.WriteLine("eggs are ready " + DateTimeOffset.Now.ToString("mm:ss"));
 
-            HashBrown hashBrown = FryHashBrowns(3);
+            HashBrown hashBrown = await FryHashBrownsAsync(3);
             Console.WriteLine("hash browns are ready" + DateTimeOffset.Now.ToString("mm:ss"));
 
-            Toast toast = ToastBread(2);
+            Toast toast = await ToastBreadAsync(2);
             ApplyButter(toast);
             ApplyJam(toast);
             Console.WriteLine("toast is ready");
@@ -45,7 +45,7 @@ namespace AsyncBreakfast
         private static void ApplyButter(Toast toast) =>
             Console.WriteLine("Putting butter on the toast" + DateTimeOffset.Now.ToString("mm:ss"));
 
-        private static Toast ToastBread(int slices)
+        private static Task<Toast> ToastBreadAsync(int slices)
         {
             for (int slice = 0; slice < slices; slice++)
             {
@@ -55,10 +55,10 @@ namespace AsyncBreakfast
             Task.Delay(3000).Wait();
             Console.WriteLine("Remove toast from toaster " + DateTimeOffset.Now.ToString("mm:ss"));
 
-            return new Toast();
+            return Task.FromResult(new Toast());
         }
 
-        private static HashBrown FryHashBrowns(int patties)
+        private static Task<HashBrown> FryHashBrownsAsync(int patties)
         {
             Console.WriteLine($"putting {patties} hash brown patties in the pan " + DateTimeOffset.Now.ToString("mm:ss"));
             Console.WriteLine("cooking first side of hash browns... " + DateTimeOffset.Now.ToString("mm:ss"));
@@ -71,10 +71,10 @@ namespace AsyncBreakfast
             Task.Delay(3000).Wait();
             Console.WriteLine("Put hash browns on plate");
 
-            return new HashBrown();
+            return Task.FromResult(new HashBrown());
         }
 
-        private static Egg FryEggs(int howMany)
+        private static Task<Egg> FryEggsAsync(int howMany)
         {
             Console.WriteLine("Warming the egg pan... " + DateTimeOffset.Now.ToString("mm:ss"));
             Task.Delay(5000).Wait();
@@ -83,13 +83,13 @@ namespace AsyncBreakfast
             Task.Delay(4000).Wait();
             Console.WriteLine("Put eggs on plate At: "+ DateTimeOffset.Now.ToString("mm:ss"));
 
-            return new Egg();
+            return Task.FromResult(new Egg());
         }
 
-        private static Coffee PourCoffee()
+        private static Task<Coffee> PourCoffeeAsync()
         {
             Console.WriteLine("Pouring coffee At: " + DateTimeOffset.Now.ToString("mm:ss"));
-            return new Coffee();
+            return Task.FromResult(new Coffee());
         }
     }
 }
