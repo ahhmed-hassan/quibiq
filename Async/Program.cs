@@ -20,13 +20,9 @@ namespace AsyncBreakfast
             
             Task<Egg> eggTask = FryEggsAsync(2);
             Task<HashBrown> hashBrownTask = FryHashBrownsAsync(3);
-            Task<Toast> toastTask = ToastBreadAsync(2);
+            Task<Toast> toastTask = MakeToastWithButterAndJamAsync(2);
 
-            Toast toast = await toastTask;
-            ApplyButter(toast);
-            ApplyJam(toast);
-            Console.WriteLine("toast is ready at: "+ DateTimeOffset.Now.ToString("mm:ss")+ Environment.NewLine);
-
+           
             Juice oj = PourOJ();
             Console.WriteLine("oj is ready");
 
@@ -35,6 +31,10 @@ namespace AsyncBreakfast
 
             HashBrown hashBrown = await hashBrownTask;
             Console.WriteLine("hash browns are ready" + DateTimeOffset.Now.ToString("mm:ss") + Environment.NewLine);
+
+            Toast toast = await toastTask;
+            Console.WriteLine("toast is ready at: " + DateTimeOffset.Now.ToString("mm:ss") + Environment.NewLine);
+
 
             Console.WriteLine("Breakfast is ready!");
         }
@@ -51,6 +51,14 @@ namespace AsyncBreakfast
         private static void ApplyButter(Toast toast) =>
             Console.WriteLine("Putting butter on the toast" + DateTimeOffset.Now.ToString("mm:ss"));
 
+        static async Task<Toast> MakeToastWithButterAndJamAsync(int number)
+        {
+            var toast = await ToastBreadAsync(number);
+            ApplyButter(toast);
+            ApplyJam(toast);
+
+            return toast;
+        }
         private static async Task<Toast> ToastBreadAsync(int slices)
         {
             for (int slice = 0; slice < slices; slice++)
@@ -58,6 +66,8 @@ namespace AsyncBreakfast
                 Console.WriteLine("Putting a slice of bread in the toaster" + DateTimeOffset.Now.ToString("mm:ss"));
             }
             Console.WriteLine("Start toasting... " + DateTimeOffset.Now.ToString("mm:ss"));
+            Console.WriteLine("Fire! Toast is ruined!");
+            throw new InvalidOperationException("The toaster is on fire" + DateTimeOffset.Now.ToString("mm:ss"));
             await Task.Delay(3000);
             Console.WriteLine("Remove toast from toaster " + DateTimeOffset.Now.ToString("mm:ss"));
 
