@@ -88,7 +88,7 @@ public class AppointmentSearchCriteria
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
     public string? CustomerName { get; set; }
-    public List<string>? ServiceTypes { get; set; }
+    public List<string> ServiceTypes { get; set; } = [];
     public decimal? MinAmount { get; set; }
     public string? Status { get; set; }
 }
