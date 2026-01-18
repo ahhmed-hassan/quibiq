@@ -216,7 +216,9 @@ public static class TestData
     
     public static (List<Order>, List<Customer>) GetLargeDataset()
     {
-        var customers = Enumerable.Range(1, 1000)
+        const int customersTotalNumber = 10_000;
+        const int orderTotalNumber = 50_000;
+        var customers = Enumerable.Range(1, customersTotalNumber)
             .Select(i => new Customer
             {
                 CustomerId = i,
@@ -231,11 +233,11 @@ public static class TestData
             .ToList();
         
         var random = new Random(42); // Fixed seed for reproducible tests
-        var orders = Enumerable.Range(1, 5000)
+        var orders = Enumerable.Range(1, orderTotalNumber)
             .Select(i => new Order
             {
                 OrderId = i,
-                CustomerId = random.Next(1, 1001), // Random customer
+                CustomerId = random.Next(1, customersTotalNumber + 1), // Random customer
                 Amount = random.Next(10, 1000),
                 Date = DateTime.Now.AddDays(-random.Next(0, 365))
             })

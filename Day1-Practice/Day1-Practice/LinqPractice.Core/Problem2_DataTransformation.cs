@@ -120,7 +120,5 @@ public class SystemIntegrationTransformer
 
         return null;
 
-
-        throw new NotImplementedException("TODO: Implement ParseGermanDate()");
     }
 }
