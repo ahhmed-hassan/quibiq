@@ -31,3 +31,5 @@ public record PagedResult<T>
     public int TotalCount { get; init; }
     public bool HasNextPage { get; init; }
 }
+
+public record UpdateBalanceBody(decimal Amount)
