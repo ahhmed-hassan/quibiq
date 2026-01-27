@@ -22,16 +22,13 @@ public class CustomerService
     }
 
 
-    public async Task<PagedResult<Customer>?> GetOrdersAsync(
-        string? status = null,
+    public async Task<PagedResult<Customer>?> GetCustomersAsync(
         int page = 1,
         int pageSize = 10,
         CancellationToken ct = default)
     {
         // Build query string
         var queryParams = $"?page={page}&pageSize={pageSize}";
-        if (!string.IsNullOrEmpty(status))
-            queryParams += $"&status={status}";
 
         // Create rate-limited pipeline (handles 429 + transient errors)
         var pipeline = ResiliencePipelineFactory.CreateRateLimitedHttpPipeline(
