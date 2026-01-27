@@ -183,12 +183,34 @@ public class IntegrationOrchestrator
 
         // TODO: Implement this method!
 
+        var processingOrders = (await _orderService.GetOrdersAsync(
+            status: "processing",
+            page: 1,
+            pageSize: 50,
+            ct))?.Items;
+        if (processingOrders is null)
+        {
+            _logger.LogInformation("No orders to be completed");
+            return new();
+        }
+        foreach (var order in processingOrders)
+        {
+            var BalanceUpdated =
+                await _customerService.DecreaseBalanceAsync(order.CustomerId, new(order.TotalAmount), ct);
+            if (!BalanceUpdated)
+            {
+                _logger.LogWarning("Cannot Update balance for Customer {CustomerId} having Order {OrderId}", order.CustomerId, order.OrderId);
+            }
+          //  _customerService.UpdateLoyaltyPointsAsync
+        }
+        
+
         stopwatch.Stop();
 
         throw new NotImplementedException("TODO: Implement CompleteOrdersAsync");
     }
 
-   
+    
     public async Task<IntegrationResult> SyncCustomerLoyaltyAsync(CancellationToken ct = default)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -204,5 +226,5 @@ public class IntegrationOrchestrator
         throw new NotImplementedException("TODO: Implement SyncCustomerLoyaltyAsync");
     }
 
-   
+
 }

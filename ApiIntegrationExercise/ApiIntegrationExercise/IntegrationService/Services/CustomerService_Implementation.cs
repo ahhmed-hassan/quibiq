@@ -174,17 +174,29 @@ public class CustomerService
             customerId, response.StatusCode);
         return false;
     }
-    
+
     // ═══════════════════════════════════════════════════════════════════════════
     // METHOD 4: UpdateBalanceAsync - Standard pipeline
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
+    public async Task<bool> DecreaseBalanceAsync(
+        string customerId,
+        DecreaseBalance increaseBalance,
+        CancellationToken ct = default
+        ) => await UpdateBalanceAsync(customerId, -increaseBalance.Amount, ct);
+    public async Task<bool> IncreaseBalanceAsync(
+        string customerId,
+        IncreaseBalance increaseBalance,
+        CancellationToken ct = default
+        ) => await UpdateBalanceAsync(customerId, increaseBalance.Amount, ct);
+
+
     /// <summary>
     /// Update customer balance (charge or credit)
     /// </summary>
-    public async Task<bool> UpdateBalanceAsync(
-        string customerId, 
-        decimal amount, 
+    private async Task<bool> UpdateBalanceAsync(
+        string customerId,
+        decimal amount,
         CancellationToken ct = default)
     {
         var pipeline = ResiliencePipelineFactory.CreateHttpPipeline(
@@ -194,12 +206,12 @@ public class CustomerService
             maxRetries: 3,
             timeoutSeconds: 5
         );
-        
+
         var response = await pipeline.ExecuteAsync(async token =>
         {
-            return await _httpClient.PostAsJsonAsync(
-                $"/api/customers/{customerId}/balance",
-                new UpdateBalanceBody(amount ),
+        return await _httpClient.PostAsJsonAsync(
+            $"/api/customers/{customerId}/balance",
+            new { Amount = amount },
                 token);
         }, ct);
         

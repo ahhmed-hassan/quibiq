@@ -32,4 +32,6 @@ public record PagedResult<T>
     public bool HasNextPage { get; init; }
 }
 
-public record UpdateBalanceBody(decimal Amount)
+public record IncreaseBalance(decimal Amount) { };
+
+public record DecreaseBalance(decimal Amount) { };
