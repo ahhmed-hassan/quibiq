@@ -25,6 +25,7 @@ public class IntegrationOrchestrator
     private readonly CustomerService _customerService = customerService;
     private readonly OrderService _orderService = orderService;
     private readonly ILogger<IntegrationOrchestrator> _logger = logger;
+    private const int AmountPerPoint = 10; 
 
 
     /// <summary>
@@ -227,7 +228,7 @@ public class IntegrationOrchestrator
 
         var ordersRoyalityUpdates = await Task.WhenAll(updatedBalanceOrders.Select(async order =>
         {
-            var pointsEarned = (int)order.TotalAmount / 10;
+            var pointsEarned = (int)order.TotalAmount / AmountPerPoint;
             return new
             {
                 order.OrderId,
@@ -236,7 +237,7 @@ public class IntegrationOrchestrator
         }
         ));
         var updatedRoyalityOrders = ordersRoyalityUpdates.Where(ou => ou.LoyalityUpdated);
-        var failedRoyalityUpdated = ordersRoyalityUpdates.Where(ou=> !ou.LoyalityUpdated).ToList();
+        var failedRoyalityUpdated = ordersRoyalityUpdates.Where(ou => !ou.LoyalityUpdated).ToList();
         foreach (var failedRoyalityOrder in failedRoyalityUpdated)
         {
             _logger.LogError("Could not update Loyality Order {Order.Id}", failedRoyalityOrder.OrderId);
@@ -248,7 +249,7 @@ public class IntegrationOrchestrator
         IEnumerable<string> errorMesasges = failedRoyalityUpdated.Select(ou => $"Loyality Update failed for Order {ou.OrderId}")
             .Concat(failedUpdatedBalances.Select(ou => $"balance Update failed for Order {ou.order.OrderId}"));
 
-            ;
+        ;
 
         stopwatch.Stop();
         return new()
@@ -257,7 +258,7 @@ public class IntegrationOrchestrator
             ErrorMessages = errorMesasges.ToList(),
             FailedOrderIds = failedRoyalityUpdated.Select(ou => ou.OrderId)
             .Concat(failedUpdatedBalances.Select(ou => ou.order.OrderId)).ToList(),
-           Duration = stopwatch.Elapsed,
+            Duration = stopwatch.Elapsed,
         };
 
     }
@@ -267,15 +268,6 @@ public class IntegrationOrchestrator
     /// 
     /// Your Task:
     /// Calculate total order value per customer and update loyalty points accordingly.
-    /// 
-    /// Requirements:
-    /// 1. Get all customers from CustomerApi
-    /// 2. For each customer:
-    ///    a. Get all their completed orders - OrderApi
-    ///    b. Calculate total spend
-    ///    c. Calculate loyalty points earned (€10 = 1 point)
-    ///    d. Update customer loyalty - CustomerApi
-    /// 3. Handle missing data (customers with no orders, orders with invalid customers)
     /// 
     /// This simulates a "nightly batch job" that reconciles data between systems.
     /// </summary>
@@ -288,10 +280,108 @@ public class IntegrationOrchestrator
         Console.WriteLine("╚══════════════════════════════════════════════════════════╝\n");
 
         // TODO: Implement this method!
+        var customers = (await _customerService.GetCustomersAsync(1, 50, ct))?.Items;
+        if (customers is null)
+        {
+            _logger.LogCritical("No customers Found");
+            return new();
+        }
+        var customersWithOrders = (
+            await Task.WhenAll(customers.Select(async customer =>
+            new
+            {
+                Customer = customer,
+                Orders = await _orderService.GetOrdersByCustomerAsync(customer.CustomerId, ct),
+
+            }
+            ))
+            ).Where(co => co.Orders.Any()).ToList(); 
+           ;
+
+        var loyaltyUpdates = await Task.WhenAll(customersWithOrders.Select(async co =>
+        {
+            // Calculate expected loyalty based on order history
+            var expectedPoints = (int)(co.Orders.Sum(o => o.TotalAmount) / AmountPerPoint);
+            var currentPoints = co.Customer.LoyaltyPoints;
+            var pointsDifference = expectedPoints - currentPoints;
+
+            // Only update if out of sync
+            if (pointsDifference == 0)
+            {
+                _logger.LogInformation(
+                    "Customer {CustomerId} loyalty already in sync ({Points} points)",
+                    co.Customer.CustomerId, currentPoints);
+                return new
+                {
+                    co.Customer.CustomerId,
+                    co.Orders,
+                    LoyaltyUpdated = true,
+                    WasInSync = true
+                };
+            }
+
+            _logger.LogInformation(
+                "Customer {CustomerId}: Expected {Expected} points, has {Current} points, difference: {Diff}",
+                co.Customer.CustomerId, expectedPoints, currentPoints, pointsDifference);
+
+            var updated = await _customerService.UpdateLoyaltyPointsAsync(
+                co.Customer.CustomerId,
+                pointsDifference,
+                ct);
+
+            return new
+            {
+                co.Customer.CustomerId,
+                co.Orders,
+                LoyaltyUpdated = updated,
+                WasInSync = false
+            };
+        }));
 
         stopwatch.Stop();
 
-        throw new NotImplementedException("TODO: Implement SyncCustomerLoyaltyAsync");
+        // Step 4: Build results
+        var failedUpdates = loyaltyUpdates
+            .Where(x => !x.LoyaltyUpdated)
+            .ToList();
+
+        var successfulUpdates = loyaltyUpdates
+            .Where(x => x.LoyaltyUpdated && !x.WasInSync)
+            .ToList();
+
+        foreach (var failed in failedUpdates)
+        {
+            _logger.LogError(
+                "Could not update loyalty for Customer {CustomerId}",
+                failed.CustomerId);
+        }
+
+        foreach (var success in successfulUpdates)
+        {
+            _logger.LogInformation(
+                "✓ Loyalty synced for Customer {CustomerId}",
+                success.CustomerId);
+        }
+
+        var errorMessages = failedUpdates
+            .Select(f => $"Loyalty update failed for Customer {f.CustomerId}")
+            .ToList();
+
+        var failedOrderIds = failedUpdates
+            .SelectMany(f => f.Orders.Select(o => o.OrderId))
+            .ToList();
+
+        stopwatch.Stop();
+        
+        return new()
+        {
+            TotalOrdersProcessed = customersWithOrders.Sum(c => c.Orders.Count),
+            Duration = stopwatch.Elapsed,
+            ErrorMessages = errorMessages,
+            FailedOrderIds = failedOrderIds.ToList()
+        };
+
+
     }
 
 
