@@ -3,11 +3,11 @@ namespace IntegrationService.Models;
 public record IntegrationResult
 {
     public int TotalOrdersProcessed { get; init; }
-    public int SuccessfulOrders { get; init; }
-    public int FailedOrders { get; init; }
     public List<string> FailedOrderIds { get; init; } = new();
     public List<string> ErrorMessages { get; init; } = new();
     public TimeSpan Duration { get; init; }
+    public int SuccessfulOrders => TotalOrdersProcessed - FailedOrderIds.Count; 
+    public int FailedOrders => FailedOrderIds.Count;
 }
 
 public record OrderValidationResult

@@ -161,8 +161,6 @@ public class IntegrationOrchestrator
         return new IntegrationResult
         {
             TotalOrdersProcessed = pendingOrders.Items.Count,
-            SuccessfulOrders = approvedOrders.Count,
-            FailedOrders = failedOrdersIds.Count,
             Duration = stopwatch.Elapsed,
             ErrorMessages = errorMessages,
             FailedOrderIds = failedOrdersIds
@@ -172,7 +170,25 @@ public class IntegrationOrchestrator
 
     }
 
-  
+    /// <summary>
+    /// CHALLENGE 2: Complete Orders and Update Customer Data
+    /// 
+    /// Your Task:
+    /// Move orders from "Processing" to "Completed" and update customer loyalty/balance.
+    /// 
+    /// Requirements:
+    /// 1. Get all "Processing" orders
+    /// 2. For each order:
+    ///    a. Update customer balance (charge them) - CustomerApi
+    ///    b. Award loyalty points (€10 = 1 point) - CustomerApi
+    ///    c. Update order status to "Completed" - OrderApi
+    /// 3. Handle errors gracefully (retry failed operations)
+    /// 
+    /// Business Rules:
+    /// - Loyalty Points: 1 point per €10 spent
+    /// - Balance Update: Add order amount to current balance
+    /// - If ANY step fails, log error but continue with other orders
+    /// </summary>
     public async Task<IntegrationResult> CompleteOrdersAsync(CancellationToken ct = default)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -193,24 +209,76 @@ public class IntegrationOrchestrator
             _logger.LogInformation("No orders to be completed");
             return new();
         }
-        foreach (var order in processingOrders)
+        var ordersAndBalancesUpdates = await Task.WhenAll(processingOrders.Select(async order =>
+         new
+         {
+             order,
+             IsBalanceUpdated = await _customerService.DecreaseBalanceAsync(order.CustomerId, new(order.TotalAmount), ct)
+         }
+        )
+         );
+        var failedUpdatedBalances = ordersAndBalancesUpdates.Where(ob => !ob.IsBalanceUpdated).ToList();
+        var updatedBalanceOrders = ordersAndBalancesUpdates.Where(ob => ob.IsBalanceUpdated).Select(ob => ob.order);
+
+        foreach (var failedOrderbalance in failedUpdatedBalances)
         {
-            var BalanceUpdated =
-                await _customerService.DecreaseBalanceAsync(order.CustomerId, new(order.TotalAmount), ct);
-            if (!BalanceUpdated)
-            {
-                _logger.LogWarning("Cannot Update balance for Customer {CustomerId} having Order {OrderId}", order.CustomerId, order.OrderId);
-            }
-          //  _customerService.UpdateLoyaltyPointsAsync
+            _logger.LogError("Could not update Balance Order {Order.Id}", failedOrderbalance.order.OrderId);
         }
-        
+
+        var ordersRoyalityUpdates = await Task.WhenAll(updatedBalanceOrders.Select(async order =>
+        {
+            var pointsEarned = (int)order.TotalAmount / 10;
+            return new
+            {
+                order.OrderId,
+                LoyalityUpdated = await _customerService.UpdateLoyaltyPointsAsync(order.CustomerId, pointsEarned, ct)
+            };
+        }
+        ));
+        var updatedRoyalityOrders = ordersRoyalityUpdates.Where(ou => ou.LoyalityUpdated);
+        var failedRoyalityUpdated = ordersRoyalityUpdates.Where(ou=> !ou.LoyalityUpdated).ToList();
+        foreach (var failedRoyalityOrder in failedRoyalityUpdated)
+        {
+            _logger.LogError("Could not update Loyality Order {Order.Id}", failedRoyalityOrder.OrderId);
+        }
+
+        await Task.WhenAll(updatedRoyalityOrders.Select(async ou =>
+            await _orderService.UpdateOrderStatusAsync(ou.OrderId, "Completed", ct)));
+
+        IEnumerable<string> errorMesasges = failedRoyalityUpdated.Select(ou => $"Loyality Update failed for Order {ou.OrderId}")
+            .Concat(failedUpdatedBalances.Select(ou => $"balance Update failed for Order {ou.order.OrderId}"));
+
+            ;
 
         stopwatch.Stop();
+        return new()
+        {
+            TotalOrdersProcessed = processingOrders.Count(),
+            ErrorMessages = errorMesasges.ToList(),
+            FailedOrderIds = failedRoyalityUpdated.Select(ou => ou.OrderId)
+            .Concat(failedUpdatedBalances.Select(ou => ou.order.OrderId)).ToList(),
+           Duration = stopwatch.Elapsed,
+        };
 
-        throw new NotImplementedException("TODO: Implement CompleteOrdersAsync");
     }
 
-    
+    /// <summary>
+    /// CHALLENGE 3: Sync Customer Loyalty Tiers
+    /// 
+    /// Your Task:
+    /// Calculate total order value per customer and update loyalty points accordingly.
+    /// 
+    /// Requirements:
+    /// 1. Get all customers from CustomerApi
+    /// 2. For each customer:
+    ///    a. Get all their completed orders - OrderApi
+    ///    b. Calculate total spend
+    ///    c. Calculate loyalty points earned (€10 = 1 point)
+    ///    d. Update customer loyalty - CustomerApi
+    /// 3. Handle missing data (customers with no orders, orders with invalid customers)
+    /// 
+    /// This simulates a "nightly batch job" that reconciles data between systems.
+    /// </summary>
     public async Task<IntegrationResult> SyncCustomerLoyaltyAsync(CancellationToken ct = default)
     {
         var stopwatch = Stopwatch.StartNew();
