@@ -20,11 +20,57 @@ public class CustomerService
         _httpClient = httpClient;
         _logger = logger;
     }
-    
+
+
+    public async Task<PagedResult<Customer>?> GetOrdersAsync(
+        string? status = null,
+        int page = 1,
+        int pageSize = 10,
+        CancellationToken ct = default)
+    {
+        // Build query string
+        var queryParams = $"?page={page}&pageSize={pageSize}";
+        if (!string.IsNullOrEmpty(status))
+            queryParams += $"&status={status}";
+
+        // Create rate-limited pipeline (handles 429 + transient errors)
+        var pipeline = ResiliencePipelineFactory.CreateRateLimitedHttpPipeline(
+            operationName: "GetCustomers",
+            logger: _logger,
+            endpoint: $"/api/customers{queryParams}",
+            maxRetries: 5,
+            rateLimitWaitSeconds: 5
+        );
+
+        // Execute through pipeline
+        var response = await pipeline.ExecuteAsync(async token =>
+        {
+            return await _httpClient.GetAsync($"/api/customers{queryParams}", token);
+        }, ct);
+
+        // Handle errors
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError(
+                "Failed to get customers after retries: {StatusCode}",
+                response.StatusCode);
+            return null;
+        }
+
+        // Deserialize
+        var result = await response.Content.ReadFromJsonAsync<PagedResult<Customer>>(ct);
+
+        _logger.LogInformation(
+            "✓ Retrieved {Count} orders (page {Page})",
+            result?.Items.Count ?? 0, page);
+
+        return result;
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // METHOD 1: GetCustomerAsync - Standard pipeline with retry + timeout
     // ═══════════════════════════════════════════════════════════════════════════
-    
+
     /// <summary>
     /// Get customer by ID with resilience (retry + timeout)
     /// 
@@ -230,48 +276,5 @@ public class CustomerService
         return false;
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // BONUS: Alternative with Circuit Breaker for Critical Operations
-    // ═══════════════════════════════════════════════════════════════════════════
-    
-    /// <summary>
-    /// Check credit with circuit breaker for mission-critical operations
-    /// Use this if credit checks are essential and you want to fail fast when API is down
-    /// </summary>
-    public async Task<CreditCheckResult?> CheckCreditWithCircuitBreakerAsync(
-        string customerId, 
-        decimal orderAmount, 
-        CancellationToken ct = default)
-    {
-        var pipeline = ResiliencePipelineFactory.CreateHttpPipelineWithCircuitBreaker(
-            operationName: "CheckCredit-Critical",
-            logger: _logger,
-            endpoint: $"/api/customers/{customerId}/credit-check",
-            maxRetries: 3,
-            timeoutSeconds: 5,
-            failureThreshold: 0.5,
-            breakDurationSeconds: 30
-        );
-        
-        try
-        {
-            var response = await pipeline.ExecuteAsync(async token =>
-            {
-                return await _httpClient.GetAsync(
-                    $"/api/customers/{customerId}/credit-check?orderAmount={orderAmount}", 
-                    token);
-            }, ct);
-            
-            if (response.StatusCode == HttpStatusCode.NotFound)
-                return null;
-            
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<CreditCheckResult>(ct);
-        }
-        catch (BrokenCircuitException)
-        {
-            _logger.LogError("Circuit breaker is OPEN - credit check unavailable");
-            throw; // Let caller handle circuit breaker being open
-        }
-    }
+   
 }
