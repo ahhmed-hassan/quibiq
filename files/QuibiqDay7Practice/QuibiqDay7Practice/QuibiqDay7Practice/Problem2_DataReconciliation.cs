@@ -55,15 +55,7 @@ public class DataReconciliationService : IDataReconciliationService
                 .Where(x => !x.CrmOrders.Any())
                 .Select(x => x.ErpOrder)
                 .ToList();
-                ;
 
-        //var matchedOrders = erpOrdersLeftJoinCrmOrders.Join(
-        //  crmOrders,
-        //  erp => erp.ErpOrder.OrderId,
-        //  crm => crm.OrderId,
-        //  (erp, crm) =>
-        //  (erp.ErpOrder, crm)
-        //  );
         var matchedOrders = erpOrdersLeftJoinCrmOrders
             .Where(x => x.CrmOrders.Any())
             .SelectMany(x => x.CrmOrders.Select(crm => (x.ErpOrder, crm))
@@ -74,15 +66,10 @@ public class DataReconciliationService : IDataReconciliationService
             crm => crm.OrderId)
             .ToList();
 
-
-      
-
         return new ReconciliationResult(
             erpOnlyOrders,
             crmOnlyOrders,
             matchedOrders.ToList()
-
             );
-        throw new NotImplementedException();
     }
 }
