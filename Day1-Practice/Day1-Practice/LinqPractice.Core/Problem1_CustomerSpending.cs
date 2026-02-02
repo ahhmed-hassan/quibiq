@@ -6,7 +6,7 @@ namespace LinqPractice.Core;
 /// Your company wants to identify high-value customers and understand 
 /// spending patterns across different customer segments.
 /// 
-/// Your Task:
+/// Flow of the method: 
 /// Implement AnalyzeSpending() that:
 /// 1. Joins orders with customers
 /// 2. Groups by customer, calculates total spending
