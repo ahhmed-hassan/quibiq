@@ -3,13 +3,9 @@ using System.Globalization;
 namespace LinqPractice.Core;
 
 /// <summary>
-/// PROBLEM 2: System Integration - Data Transformation ⭐⭐ (30 minutes)
+/// PROBLEM 2: System Integration - Data Transformation
 /// 
-/// Real-World Context (from your CV!):
-/// You integrated JIRA and TRAC systems - this is similar!
-/// Transform data between SAP (German format) and Salesforce (English format).
 /// 
-/// Your Task:
 /// Implement TransformOrders() that converts SAP orders to Salesforce format.
 /// 
 /// Data Transformations Required:
@@ -17,12 +13,6 @@ namespace LinqPractice.Core;
 /// 2. Parse German date: "31.12.2024" → DateTime(2024, 12, 31)
 /// 3. Count total items: Flatten Positionen and count
 /// 4. Handle missing/invalid data gracefully (skip invalid orders)
-/// 
-/// Expected LINQ Operations:
-/// - Select (projection/transformation)
-/// - SelectMany (flatten nested Positionen)
-/// - Where (filter invalid data)
-/// - Consider using .TryParse() methods
 /// 
 /// Example Input:
 /// SapOrder {
