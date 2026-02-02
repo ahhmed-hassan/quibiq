@@ -1,7 +1,7 @@
 namespace LinqPractice.Core;
 
 /// <summary>
-/// PROBLEM 3: Query Optimization ⭐⭐ (25 minutes)
+/// PROBLEM 3: Query Optimization 
 /// 
 /// Performance Challenge:
 /// You have a slow query in production that's killing database performance.
@@ -13,20 +13,14 @@ namespace LinqPractice.Core;
 /// - Slow version: ~10,000 * 100,000 = 1 billion operations!
 /// - Fast version: ~110,000 operations (100x faster!)
 /// 
-/// Your Task:
+/// 
 /// 1. Analyze GetOrderSummaries_Slow() and explain why it's slow
 /// 2. Implement GetOrderSummaries_Fast() using GroupBy and Join
-/// 3. Verify performance improvement in tests
+/// 
 /// 
 /// Key Insights:
 /// - Slow version: Loops through customers, then filters orders for each (nested loop)
 /// - Fast version: Group orders once, join with customers (single pass)
-/// 
-/// Expected LINQ Operations:
-/// - GroupBy (group orders by CustomerId)
-/// - Join (match customers with grouped orders)
-/// - Select (project to OrderSummary)
-/// - Sum, Count (aggregations)
 /// </summary>
 public class QueryOptimizer
 {
