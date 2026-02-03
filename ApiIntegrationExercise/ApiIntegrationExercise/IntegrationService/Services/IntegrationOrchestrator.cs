@@ -7,14 +7,6 @@ namespace IntegrationService.Services;
 
 /// <summary>
 /// Orchestrates the integration between CustomerApi and OrderApi
-/// 
-/// Your Task: Implement the business logic that coordinates both APIs
-/// 
-/// This is where you demonstrate your understanding of:
-/// - API consumption and coordination
-/// - Error handling and recovery
-/// - Business logic implementation
-/// - Data validation across systems
 /// </summary>
 public class IntegrationOrchestrator
     (CustomerService customerService,
@@ -29,11 +21,7 @@ public class IntegrationOrchestrator
 
 
     /// <summary>
-    /// CHALLENGE 1: Process Pending Orders
-    /// 
-    /// Your Task:
-    /// Process all pending orders by validating them against customer data.
-    /// 
+
     /// Requirements:
     /// 1. Get all pending orders from OrderApi
     /// 2. For each order:
@@ -44,10 +32,6 @@ public class IntegrationOrchestrator
     /// 3. Return statistics about processed orders
     /// 4. Continue processing even if some orders fail
     /// 
-    /// Tips:
-    /// - Process orders sequentially first, then optimize with concurrency if time permits
-    /// - Log each step for debugging
-    /// - Use try-catch around each order to prevent one failure from stopping everything
     /// </summary>
     /// 
     public async Task<IntegrationResult> ProcessPendingOrdersAsync(CancellationToken ct = default)
@@ -266,7 +250,6 @@ public class IntegrationOrchestrator
     /// <summary>
     /// CHALLENGE 3: Sync Customer Loyalty Tiers
     /// 
-    /// Your Task:
     /// Calculate total order value per customer and update loyalty points accordingly.
     /// 
     /// This simulates a "nightly batch job" that reconciles data between systems.
