@@ -92,60 +92,7 @@ public static class ResiliencePipelineFactory
         };
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // BUILDING BLOCK 3: Circuit Breaker Options
-    // ═══════════════════════════════════════════════════════════════════════════
     
-    private static CircuitBreakerStrategyOptions<HttpResponseMessage> GetCircuitBreakerOptions(
-        string operationName,
-        ILogger logger,
-        string? endpoint = null,
-        double failureThreshold = 0.5,
-        int breakDurationSeconds = 30)
-    {
-        return new CircuitBreakerStrategyOptions<HttpResponseMessage>
-        {
-            ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
-                .Handle<HttpRequestException>()
-                .Handle<TimeoutRejectedException>()
-                .HandleResult(r => r.StatusCode == HttpStatusCode.InternalServerError)
-                .HandleResult(r => r.StatusCode == HttpStatusCode.ServiceUnavailable),
-            
-            FailureRatio = failureThreshold,
-            SamplingDuration = TimeSpan.FromSeconds(10),
-            MinimumThroughput = 5,
-            BreakDuration = TimeSpan.FromSeconds(breakDurationSeconds),
-            
-            OnOpened = args =>
-            {
-                var endpointInfo = string.IsNullOrEmpty(endpoint) ? "" : $" [{endpoint}]";
-                logger.LogError(
-                    "🔴 [{Operation}]{Endpoint} Circuit breaker OPENED for {Duration}s",
-                    operationName, endpointInfo, breakDurationSeconds);
-                return ValueTask.CompletedTask;
-            },
-            
-            OnClosed = args =>
-            {
-                var endpointInfo = string.IsNullOrEmpty(endpoint) ? "" : $" [{endpoint}]";
-                logger.LogInformation(
-                    "🟢 [{Operation}]{Endpoint} Circuit breaker CLOSED",
-                    operationName, endpointInfo);
-                return ValueTask.CompletedTask;
-            },
-            
-            OnHalfOpened = args =>
-            {
-                var endpointInfo = string.IsNullOrEmpty(endpoint) ? "" : $" [{endpoint}]";
-                logger.LogInformation(
-                    "🟡 [{Operation}]{Endpoint} Circuit breaker HALF-OPEN (testing)",
-                    operationName, endpointInfo);
-                return ValueTask.CompletedTask;
-            }
-        };
-    }
-
-
     private static TimeoutStrategyOptions GetTimeoutStrategyOptions(int timeoutSeconds, ILogger logger, string operationName, string? endpoint = null)
         => new ()
     {
@@ -194,30 +141,7 @@ public static class ResiliencePipelineFactory
             .Build();
     }
     
-    // ═══════════════════════════════════════════════════════════════════════════
-    // COMPOSED PIPELINE 2: Pipeline with Circuit Breaker
-    // ═══════════════════════════════════════════════════════════════════════════
-    
-    /// <summary>
-    /// Creates a resilience pipeline with retry + circuit breaker + timeout
-    /// Use for critical operations where you want to fail fast if service is down
-    /// </summary>
-    public static ResiliencePipeline<HttpResponseMessage> CreateHttpPipelineWithCircuitBreaker(
-        string operationName,
-        ILogger logger,
-        string? endpoint = null,
-        int maxRetries = 3,
-        int timeoutSeconds = 5,
-        double failureThreshold = 0.5,
-        int breakDurationSeconds = 30)
-    {
-        return new ResiliencePipelineBuilder<HttpResponseMessage>()
-            .AddRetry(GetStandardRetryOptions(operationName, logger, endpoint, maxRetries))
-            .AddCircuitBreaker(GetCircuitBreakerOptions(operationName, logger, endpoint, failureThreshold, breakDurationSeconds))
-            .AddTimeout(GetTimeoutStrategyOptions(timeoutSeconds, logger, operationName, endpoint))
-            .Build();
-    }
-    
+   
     // ═══════════════════════════════════════════════════════════════════════════
     // COMPOSED PIPELINE 3: Rate-Limited HTTP Pipeline
     // ═══════════════════════════════════════════════════════════════════════════
